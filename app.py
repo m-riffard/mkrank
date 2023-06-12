@@ -7,6 +7,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import streamlit as st
+import pandas as pd
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
@@ -60,8 +61,8 @@ class Player:
             + str(self.elo_update)
         )
 
-
-def main():
+@st.cache_data
+def load_data():
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -169,23 +170,38 @@ def main():
                 print(player.name, 'perd', -round(player.elo_update))
         print('----------------------------------')
 
+        return all_players_elo
     except HttpError as err:
         print(err)
-        
-    with st.form("my_form"):
-        options = st.multiselect(
-            'Select the players in the order',
-            ['Green', 'Yellow', 'Red', 'Blue'],
-            ['Yellow', 'Red'])
 
-        st.write(f'{options[0]} 1er 🏆\n{options[1]} 2e 🥈\n{options[1]} 3e 🥉\n{options[1]} 4e 🏅\n')
-        # Every form must have a submit button.
-        submitted = st.form_submit_button("Submit")
-        if submitted:
-            st.write("slider", slider_val, "checkbox", checkbox_val)
+options=[]
+st.session_state.is_submit_disabled=True
 
-    st.write("Outside the form")
+def handle_select():
+    nb_players=len(players)
+    if nb_players==0:
+        st.session_state.is_submit_disabled=True
+    if nb_players>0:
+        st.write(f'{players[0]} 1er 🏆')
+        st.session_state.is_submit_disabled=True
+    if nb_players>1:
+        st.write(f'\n{players[1]} 2e 🥈')
+        st.session_state.is_submit_disabled=False
+    if nb_players>2:
+        st.write(f'\n{players[2]} 3e 🥉')
+    if nb_players>3:
+        st.write(f'\n{players[3]} 4e 🏅')
 
-
-if __name__ == "__main__":
-    main()
+players_collection = load_data()
+players = st.multiselect(
+    'Selectionner les joueurs dans l\'ordre',
+    [player[0] for player in players_collection],
+    key="selected_players",
+    )
+handle_select()
+nb_races = st.selectbox(
+    'Nombre de courses:',
+    [4,6,8,12,16,20,24,32],
+    key="nb_races_selected",
+    )
+submit = st.button("Sauvegarder la course", disabled=st.session_state.is_submit_disabled)
