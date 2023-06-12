@@ -1,6 +1,4 @@
 from __future__ import print_function
-from math import exp
-import math
 
 import os.path
 
