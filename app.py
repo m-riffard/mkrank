@@ -3,10 +3,12 @@
 import streamlit as st
 
 with st.form("my_form"):
-   st.write("Inside the form")
-   slider_val = st.slider("Form slider")
-   checkbox_val = st.checkbox("Form checkbox")
+   options = st.multiselect(
+    'Select the players in the order',
+    ['Green', 'Yellow', 'Red', 'Blue'],
+    ['Yellow', 'Red'])
 
+   st.write(f'{options[0]} 1er 🏆\n{options[1]} 2e 🏆\n')
    # Every form must have a submit button.
    submitted = st.form_submit_button("Submit")
    if submitted:
