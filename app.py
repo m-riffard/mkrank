@@ -7,7 +7,11 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import streamlit as st
-import pandas as pd
+
+st.set_page_config(
+    page_title="Enregistrer une course",
+    page_icon="🏁",
+)
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
@@ -92,26 +96,6 @@ def load_data():
             .execute()
             .get("values", [])[0][0]
         )
-        nb_races = int(
-            sheet.values()
-            .get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=NB_RACES_RANGE)
-            .execute()
-            .get("values", [])[0][0]
-        )
-
-        players_name_from_game = (
-            sheet.values()
-            .get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=PLAYERS_RANGE)
-            .execute()
-            .get("values", [])[0]
-        )[0:nb_players]
-
-        positions_in_game = (
-            sheet.values()
-            .get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=LADDER_RANGE)
-            .execute()
-            .get("values", [])[0]
-        )[0:nb_players]
 
         all_players_elo = (
             sheet.values()
@@ -120,88 +104,99 @@ def load_data():
             .get("values", [])
         )
 
-        players = []
-
-        for player_name in players_name_from_game:
-            for row in range(len(all_players_elo)):
-                if player_name == all_players_elo[row][0]:
-                    players.append(
-                        Player(
-                            player_name,
-                            all_players_elo[row][1],
-                            row,
-                            positions_in_game[len(players)],
-                        )
-                    )
-
-        update_factor = nb_races / 10 * UPDATE_RATE
-
-        print('---------CALCULATING------------')
-        print('nombre de courses', nb_races)
-        print('update factor basé sur le nb de courses : ', update_factor)
-        for player in players:
-            player.expected_score = sum(
-                [
-                    1 / (1 + 10 ** ((opponent.elo - player.elo) / 400))
-                    for opponent in players
-                    if opponent != player
-                ]
-            ) / (nb_players * (nb_players - 1) / 2)
-            player.actual_score = (
-                pow(EXPONENTIAL_FACTOR_REWARD, nb_players - player.position) - 1
-            ) / sum(
-                [
-                    pow(EXPONENTIAL_FACTOR_REWARD, nb_players - player.position) - 1
-                    for player in players
-                ]
-            )
-            player.elo_update = (
-                update_factor
-                * (player.actual_score - player.expected_score)
-                * (nb_players - 1)
-            )
-            player.show()
-            
-        print('-------------RESULTS-------------')
-        for player in players:
-            if player.elo_update > 0:
-                print(player.name, 'gagne', round(player.elo_update))
-            else:
-                print(player.name, 'perd', -round(player.elo_update))
-        print('----------------------------------')
-
         return all_players_elo
     except HttpError as err:
         print(err)
 
+def compute_elo_update():
+    retreive_players_from_name()
+    update_factor = nb_races / 10 * UPDATE_RATE
+    print('--------- CALCULATING ------------')
+    print('nombre de courses', nb_races)
+    print('update factor basé sur le nb de courses : ', update_factor)
+    for player in players:
+        player.expected_score = sum(
+            [
+                1 / (1 + 10 ** ((opponent.elo - player.elo) / 400))
+                for opponent in players
+                if opponent != player
+            ]
+        ) / (nb_players * (nb_players - 1) / 2)
+        player.actual_score = (
+            pow(EXPONENTIAL_FACTOR_REWARD, nb_players - player.position) - 1
+        ) / sum(
+            [
+                pow(EXPONENTIAL_FACTOR_REWARD, nb_players - player.position) - 1
+                for player in players
+            ]
+        )
+        player.elo_update = (
+            update_factor
+            * (player.actual_score - player.expected_score)
+            * (nb_players - 1)
+        )
+        player.show()
+    reset()
+    write_results()
 options=[]
 st.session_state.is_submit_disabled=True
+players=[]
+
+def retreive_players_from_name():
+    for player_name in players_names:
+        for row in range(len(players_collection)):
+            if player_name == players_collection[row][0]:
+                players.append(
+                    Player(
+                        player_name,
+                        players_collection[row][1],
+                        row,
+                        len(players)+1,
+                    )
+                )
 
 def handle_select():
-    nb_players=len(players)
     if nb_players==0:
         st.session_state.is_submit_disabled=True
     if nb_players>0:
-        st.write(f'{players[0]} 1er 🏆')
+        st.write(f'{players_names[0]} 1er 🏆')
         st.session_state.is_submit_disabled=True
     if nb_players>1:
-        st.write(f'\n{players[1]} 2e 🥈')
+        st.write(f'\n{players_names[1]} 2e 🥈')
         st.session_state.is_submit_disabled=False
     if nb_players>2:
-        st.write(f'\n{players[2]} 3e 🥉')
+        st.write(f'\n{players_names[2]} 3e 🥉')
     if nb_players>3:
-        st.write(f'\n{players[3]} 4e 🏅')
+        st.write(f'\n{players_names[3]} 4e 🏅')
 
 players_collection = load_data()
-players = st.multiselect(
+
+st.write('NOUVELLE COURSE')
+players_names = st.multiselect(
     'Selectionner les joueurs dans l\'ordre',
     [player[0] for player in players_collection],
     key="selected_players",
+    max_selections=4,
     )
+nb_players=len(players_names)
 handle_select()
 nb_races = st.selectbox(
     'Nombre de courses:',
-    [4,6,8,12,16,20,24,32],
+    [4,6,8,12,16,20,24,32,48],
     key="nb_races_selected",
     )
-submit = st.button("Sauvegarder la course", disabled=st.session_state.is_submit_disabled)
+submit = st.button("Sauvegarder la course", disabled=st.session_state.is_submit_disabled, on_click=compute_elo_update)
+
+
+def reset():
+    st.session_state.selected_players=[]
+    st.session_state.nb_races_selected=4
+    
+def write_results():
+    st.write('RESULTATS')
+    for player in players:
+        if player.elo_update > 0:
+            st.write(player.name, 'gagne', round(player.elo_update))
+        else:
+            st.write(player.name, 'perd', -round(player.elo_update))
+    st.write('-----------------------------')
