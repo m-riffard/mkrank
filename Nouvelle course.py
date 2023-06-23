@@ -7,23 +7,14 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(
     page_title="Enregistrer une course",
     page_icon="🏁",
 )
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-
-SAMPLE_SPREADSHEET_ID = "1LwOH-BoqVVmKPAQzrWVnL-SgLkFrtYvyp5SikbeCPGo"
-SAMPLE_RANGE_NAME = "Players!A2:A"
-
-NB_PLAYERS_RANGE = "NewMatch!A3"
-NB_RACES_RANGE = "NewMatch!B3"
-PLAYERS_RANGE = "NewMatch!B6:E6"
-LADDER_RANGE = "NewMatch!B7:E7"
-USERS_RANGE = "Players!A2:B"
+dataframe = pd.read_excel('./ranks.xlsx')
 
 EXPONENTIAL_FACTOR_REWARD = 1.5
 UPDATE_RATE = 32
@@ -65,48 +56,8 @@ class Player:
             + str(self.elo_update)
         )
 
-@st.cache_data
 def load_data():
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
-
-    try:
-        service = build("sheets", "v4", credentials=creds)
-
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-
-        nb_players = int(
-            sheet.values()
-            .get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=NB_PLAYERS_RANGE)
-            .execute()
-            .get("values", [])[0][0]
-        )
-
-        all_players_elo = (
-            sheet.values()
-            .get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=USERS_RANGE)
-            .execute()
-            .get("values", [])
-        )
-
-        return all_players_elo
-    except HttpError as err:
-        print(err)
+    return pd.read_excel('./ranks.xlsx')
 
 def compute_elo_update():
     retreive_players_from_name()
@@ -130,14 +81,24 @@ def compute_elo_update():
                 for player in players
             ]
         )
-        player.elo_update = (
+        player.elo_update = round(
             update_factor
             * (player.actual_score - player.expected_score)
             * (nb_players - 1)
         )
         player.show()
+        row = players_collection.loc[players_collection['Joueur'] == player.name]
+        index = row.index[0]
+        last_column_index = len(row.columns) - 2
+        while pd.isnull(row.iloc[0, last_column_index]):
+            last_column_index -= 1
+        new_elo = players_collection.at[index, players_collection.columns[last_column_index]] + player.elo_update
+        players_collection.at[index, players_collection.columns[last_column_index+1]] = new_elo
+        players_collection.at[index, players_collection.columns[1]] = new_elo
+        players_collection.at[index, players_collection.columns[2]] += 1
     reset()
     write_results()
+    players_collection.to_excel('./ranks.xlsx')
 options=[]
 st.session_state.is_submit_disabled=True
 players=[]
@@ -145,11 +106,11 @@ players=[]
 def retreive_players_from_name():
     for player_name in players_names:
         for row in range(len(players_collection)):
-            if player_name == players_collection[row][0]:
+            if player_name == players_collection.iloc[row]['Joueur']:
                 players.append(
                     Player(
                         player_name,
-                        players_collection[row][1],
+                        players_collection.iloc[row]['Classement'],
                         row,
                         len(players)+1,
                     )
@@ -174,7 +135,7 @@ players_collection = load_data()
 st.write('NOUVELLE COURSE')
 players_names = st.multiselect(
     'Selectionner les joueurs dans l\'ordre',
-    [player[0] for player in players_collection],
+    [player for player in players_collection['Joueur']],
     key="selected_players",
     max_selections=4,
     )
