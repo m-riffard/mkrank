@@ -8,7 +8,7 @@ st.set_page_config(
     page_icon="🏁",
 )
 
-dataframe = pd.read_excel('./ranks.xlsx')
+dataframe = pd.read_excel('ranks.xlsx')
 
 EXPONENTIAL_FACTOR_REWARD = 1.5
 UPDATE_RATE = 32

@@ -6,7 +6,7 @@ st.set_page_config(
     page_icon="🏁",
 )
 
-dataframe = pd.read_excel('./ranks.xlsx')
+dataframe = pd.read_excel('ranks.xlsx')
 
 nb_players = len(dataframe.index)
 
