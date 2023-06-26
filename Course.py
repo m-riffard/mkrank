@@ -54,6 +54,7 @@ def load_data():
     return pd.read_excel('./ranks.xlsx')
 
 def compute_elo_update():
+    players_collection=load_data()
     retreive_players_from_name()
     update_factor = nb_races / 10 * UPDATE_RATE
     print('--------- CALCULATING ------------')
@@ -88,8 +89,9 @@ def compute_elo_update():
             last_column_index -= 1
         new_elo = players_collection.at[index, players_collection.columns[last_column_index]] + player.elo_update
         players_collection.at[index, players_collection.columns[last_column_index+1]] = new_elo
-        players_collection.at[index, players_collection.columns[1]] = new_elo
-        players_collection.at[index, players_collection.columns[2]] += 1
+        players_collection.at[index, players_collection.columns[2]] = new_elo
+        players_collection.at[index, players_collection.columns[3]] += 1
+    players_collection.drop(columns = players_collection.columns[0], inplace= True) #remove index column that is generated
     reset()
     write_results()
     players_collection.to_excel('./ranks.xlsx')
