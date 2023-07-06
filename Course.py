@@ -1,5 +1,6 @@
 # hosted here: https://m-riffard-mkrank-app-vxkl35.streamlit.app/
 from __future__ import print_function
+from datetime import datetime
 import streamlit as st
 import pandas as pd
 
@@ -9,6 +10,7 @@ st.set_page_config(
 )
 
 dataframe = pd.read_excel('ranks.xlsx')
+log_file=open("logs.txt", "a")
 
 EXPONENTIAL_FACTOR_REWARD = 1.5
 UPDATE_RATE = 32
@@ -34,10 +36,9 @@ class Player:
 
     def __repr__(self):
         return self.name + " " + str(self.elo) + " n°" + str(self.row)
-
-    def show(self):
-        print(
-            self.name
+    
+    def to_string(self):
+        return (self.name
             + " ---> elo : "
             + str(self.elo)
             + ", expected_score : "
@@ -47,8 +48,10 @@ class Player:
             + ", actual score based on position : "
             + str(self.actual_score)
             + ", elo_update : "
-            + str(self.elo_update)
-        )
+            + str(self.elo_update))
+
+    def show(self):
+        print(self.to_string())
 
 def load_data():
     return pd.read_excel('./ranks.xlsx')
@@ -94,6 +97,7 @@ def compute_elo_update():
     players_collection.drop(columns = players_collection.columns[0], inplace= True) #remove index column that is generated
     reset()
     write_results()
+    write_logs()
     players_collection.to_excel('./ranks.xlsx')
 options=[]
 st.session_state.is_submit_disabled=True
@@ -157,3 +161,14 @@ def write_results():
         else:
             st.write(player.name, 'perd', -round(player.elo_update))
     st.write('-----------------------------')
+    
+def write_logs():
+    log_file.write(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + ' :\n')
+    first_player = True
+    for player in players:
+        if first_player:
+            first_player = False
+        else :
+            log_file.write('  |  ')
+        log_file.write(player.to_string())
+    log_file.write('\n\n')
