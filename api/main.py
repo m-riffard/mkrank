@@ -11,9 +11,7 @@ class UserData(TypedDict):
 
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate(
-        r"C:\Users\uf430mri\mk-rank\app\api\credentials.json"
-    )
+    cred = credentials.Certificate("api/credentials.json")
     firebase_admin.initialize_app(
         cred,
         {
