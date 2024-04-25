@@ -17,7 +17,7 @@ data = [
     for name in dict
 ]
 dataframe = pd.DataFrame(data)
-st.dataframe(dataframe, use_container_width=True, hide_index=True)
+
 nb_players = len(dataframe.index)
 
 dataframe = dataframe[['Joueur','Classement','Nombre de courses']].sort_values('Classement', ascending=False)
